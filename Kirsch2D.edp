@@ -1,0 +1,75 @@
+load "gmsh" 
+// load "MUMPS_seq"
+
+func sigma11 = 50;
+func sigma22 = 40;
+func sigma12 = 0;
+
+string MESH = "Plate_with_hole.msh";
+real SQRT2=sqrt(2.0);
+
+real E = 25;
+real nu = 0.2;
+real P = 50;
+
+real sig11, sig12, sig13, sig22, sig23, sig33;
+
+real mu = E/(2*(1+nu));
+real lambda = E*nu/((1+nu)*(1-2*nu));
+
+int INSIDE = 1;
+//int BOTTOM = 2;
+//int TOP = 3;
+int OUTSIDE = 2;
+
+macro epsilon(u1,u2) [dx(u1),dy(u2),(dy(u1)+dx(u2))/SQRT2] // End of macros (EOM)
+macro div(u1,u2) (dx(u1)+dy(u2)) //EOM
+
+macro s1() (N.x*sigma11 + N.y*sigma12) // EOM
+macro s2() (N.x*sigma12 + N.y*sigma22) // EOM
+macro sN() [s1,s2] //EOM
+
+macro Press() P*[N.x, N.y] // EOM
+
+mesh Th = gmshload(MESH);
+
+varf Lame([u1,u2],[v1,v2]) = 
+  int2d(Th)(
+    lambda*div(u1,u2)*div(v1,v2) 
+    + 2.0*mu*(epsilon(u1,u2)'*epsilon(v1,v2)))
+  ; 
+  
+varf vF([u1,u2],[v1,v2]) = 
+  int1d(Th,OUTSIDE) (sN'*[v1,v2])
+  - int1d(Th,INSIDE) (Press'*[v1,v2])
+  ;
+
+fespace Vh1( Th, P1 );
+fespace Vh2( Th, [P1, P1] );
+Vh2 [u1,u2], [v1,v2];
+
+matrix MLame=Lame(Vh2, Vh2);
+set(MLame,solver=sparsesolver);
+real[int] F = vF(0, Vh2);
+
+u1[] = MLame^-1*F;
+u2[] = MLame^-1*F;
+
+
+Vh1 feSigma11, feSigma22, feSigma12, feSigmaRR;
+// Vh1 s11, s12, s13, s22, s23, s33;
+// // Vh1 sigma11Error,sigma12Error,sigma13Error,sigma23Error,// sigma22Errorsigma33Error;
+// // Vh1 sigma11h,sigma12h,sigma13h,sigma23h,sigma22h,sigma33h;
+// // Vh1 ss11, ss12, ss13, ss22, ss23, ss33;
+// 
+feSigma11 = lambda*div(u1,u2) + 2.0*mu*dx(u1);
+feSigma22 = lambda*div(u1,u2) + 2.0*mu*dy(u2);
+feSigma12 = mu*(dy(u1) + dx(u2));
+
+feSigmaRR = (feSigma11*x^2 + feSigma22*y^2 + 2*feSigma12*x*y)/(x^2 + y^2);
+
+plot(u1, fill=true, value=true);
+plot(feSigmaRR, fill=true, value=true, cmm="SRR");
+
+load "iovtk"
+savevtk("SRR.vtk", Th, feSigmaRR);
