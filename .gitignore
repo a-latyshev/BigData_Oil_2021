@@ -1,0 +1,7 @@
+*.vtu
+*.png
+*.pvd
+*.html
+*.xdmf
+.vscode
+*.h5
