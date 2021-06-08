@@ -20,8 +20,8 @@ Delete {
   Surface{1}; 
 }
 
-Mesh.MeshSizeMin = 5;
-Mesh.MeshSizeMax = 5;
+// Mesh.MeshSizeMin = 5;
+// Mesh.MeshSizeMax = 5;
 // Line(6) = {1, 3};
 // Line(7) = {4, 2};
 // BooleanDifference{ Curve{7}; Curve{6}; Delete; }{ Curve{5}; Delete; }
